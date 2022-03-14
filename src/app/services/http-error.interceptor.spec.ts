@@ -18,7 +18,7 @@ describe('HttpErrorInterceptor', () => {
         useValue: ({ error, result }: { error?: string, result?: {} }) => {
           return { body: result, code: error || false };
         }
-    }, {
+      }, {
         provide: HTTP_INTERCEPTORS,
         multi: true,
         useClass: HttpErrorInterceptor
@@ -48,7 +48,7 @@ describe('HttpErrorInterceptor', () => {
   it('shouldn\'t declare errors on success', () => {
     const next = jasmine.createSpy('next');
     http.get('/', { observe: 'response' }).subscribe(next);
-    controller.expectOne('/').flush('test');
+    controller.expectOne('/').flush('');
 
     expect(next).toHaveBeenCalled();
     expect(next).not.toHaveBeenCalledWith(jasmine.objectContaining(errors));

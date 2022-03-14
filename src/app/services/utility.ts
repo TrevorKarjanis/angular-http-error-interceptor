@@ -7,7 +7,7 @@ export class Utility {
     target = Object.assign({}, target);
     sources.filter(source => source).forEach(source => Object.entries(source).forEach(([key, value]) => {
       if (depth !== 0 && this.isObject(target[key]) && this.isObject(value)) {
-        this.copyIf(target[key] as Record<string, unknown>, (depth as number - 1), value as Record<string, unknown>);
+        target[key] = this.copyIf(target[key] as Record<string, unknown>, (depth - 1), value as Record<string, unknown>);
       } else if (target[key] === undefined) {
         target[key] = value;
       }
