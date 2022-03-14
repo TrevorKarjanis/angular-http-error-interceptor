@@ -1,13 +1,13 @@
-import { HttpContextToken, HttpErrorResponse, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import { HttpContext, HttpContextToken, HttpErrorResponse, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Inject, Injectable, Optional } from '@angular/core';
 import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
 import { catchError, throwError } from 'rxjs';
 
-import { IHttpErrorResponse } from './http-error.interceptor';
+import { HttpErrorCategory, IHttpErrorResponse } from './http-error.interceptor';
 import { HttpErrorDetails, HTTP_ERROR_OPTIONS, IHttpErrorMessages, IHttpErrorOptions, SnackBarConfig } from './http-error-options';
 import { Utility } from './utility';
 
-type Message = string | IHttpErrorMessages | null | false;
+type Message = string | IHttpErrorMessages | false | null;
 
 interface IOptions {
   details?: HttpErrorDetails;
@@ -35,10 +35,23 @@ export const MESSAGE = new HttpContextToken<Message>(() => null);
  * Display error messages for failed HTTP requests. Default generic messages are enabled for all requests by default.
  * Provide {@link HTTP_ERROR_OPTIONS} to configure the feature at the application, module, and component levels. Pass
  * HttpContextTokens to configure individual requests. The message, details, and snack bar are configurable. Define
- * message as false to disable the feature at any level.
+ * message as {@link IHttpErrorMessages} to provide a message for specific error types. IHttpErrorMessages are merged.
+ * Define message as false to disable the feature at any level.
+ *
  * @example
  * // Messages are percent formatted with optional error code, status code, URL, method, and category.
- * this.http.get('/', { context: new HttpContext().set(MESSAGE, 'The request for systems failed with status %1.') })
+ * this.http.get('/', { context: new HttpContext().set(MESSAGE, 'The request for systems failed with status %1.') });
+ *
+ * @example
+ * const message = 'There were insufficient priveleges to save the configuration.';
+ * this.http.get('/', { context: new HttpContext().set(MESSAGE, { statusCodes: { 403: message }})});
+ *
+ * @example
+ * // Require configuring messages for every request.
+ * providers: [{
+ *  provide: HTTP_ERROR_OPTIONS,
+ *  useValue: { messages: false }
+ * }]
  */
 @Injectable()
 export class HttpErrorMessageInterceptor implements HttpInterceptor {
@@ -62,15 +75,21 @@ export class HttpErrorMessageInterceptor implements HttpInterceptor {
       // Client exceptions should propogate normally.
       if (!(error instanceof HttpErrorResponse)) return throwError(error);
 
-      const options = this.getOptions(request);
+      const options = this.getOptions(request.context);
       if (!options.message) return throwError(error);
 
       let message: string | undefined;
+      // Convert the category to pascal case.
       const category = error.category.replace(/^\w/, char => char.toUpperCase());
       const tokens = [error.code, error.status, error.url, error.headers.get('Method'), category];
       if (typeof options.message === 'string') message = Utility.format(options.message, ...tokens);
       else {
-        message = (options.message as IHttpErrorMessages)[error.category];
+        // Prefer the more specific code configuration if it exists.
+        if (error.category === HttpErrorCategory.errorCode) message = options.message.errorCodes?.[error.code];
+        if (error.category === HttpErrorCategory.statusCode) message = options.message.statusCodes?.[error.status];
+
+        // Fallback to the more general message.
+        if (!message) message = (options.message as IHttpErrorMessages)[error.category];
         if (message) message = Utility.format(message, ...tokens);
         else return throwError(error);
       }
@@ -83,11 +102,12 @@ export class HttpErrorMessageInterceptor implements HttpInterceptor {
     }));
   }
 
-  private getOptions(request: HttpRequest<unknown>): IOptions {
+  private getOptions(context: HttpContext): IOptions {
     const options: IOptions = {};
-    if (request.context.has(DETAILS)) options.details = request.context.get(DETAILS);
-    if (request.context.has(MESSAGE)) options.message = request.context.get(MESSAGE);
-    if (request.context.has(SNACKBAR_CONFIG)) options.snackBarConfig = request.context.get(SNACKBAR_CONFIG);
+    // Getting a token sets it on the context.
+    if (context.has(DETAILS)) options.details = context.get(DETAILS);
+    if (context.has(MESSAGE) && context.get(MESSAGE) !== true) options.message = context.get(MESSAGE);
+    if (context.has(SNACKBAR_CONFIG)) options.snackBarConfig = context.get(SNACKBAR_CONFIG);
 
     // Specifically avoid modifying the request and options. It may be reused by the owner. Prefer the request options,
     // then global, and finally the generic defaults.

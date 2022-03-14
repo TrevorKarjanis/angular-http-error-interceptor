@@ -8,7 +8,7 @@ import { MatSnackBarConfig } from "@angular/material/snack-bar";
  export interface IHttpErrorMessages {
   connectionRefused?: string;
   errorCode?: string;
-  errorCodes?: { [code: number]: string }
+  errorCodes?: { [code: number | string]: string }
   invalidResponse?: string;
   statusCode?: string;
   statusCodes?: { [code: number]: string }
