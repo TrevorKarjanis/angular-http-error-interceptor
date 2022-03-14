@@ -1,8 +1,9 @@
 import { HttpClient, HttpContext, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { HTTP_ERROR_OPTIONS } from './http-error-options';
 
-import { TIMEOUT, TimeoutInterceptor } from './http-timeout-interceptor';
+import { TIMEOUT, HttpTimeoutInterceptor } from './http-timeout.interceptor';
 
 describe('HttpTimeoutInterceptor', () => {
   let controller: HttpTestingController;
@@ -12,9 +13,12 @@ describe('HttpTimeoutInterceptor', () => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [{
+        provide: HTTP_ERROR_OPTIONS,
+        useValue: { timeout: 20000 }
+      }, {
         provide: HTTP_INTERCEPTORS,
         multi: true,
-        useClass: TimeoutInterceptor
+        useClass: HttpTimeoutInterceptor
       }]
     });
 
@@ -32,7 +36,7 @@ describe('HttpTimeoutInterceptor', () => {
   it('should error when a request times out by default', fakeAsync(() => {
     const error = jasmine.createSpy('error');
     http.get('/').subscribe({ error });
-    tick(30000);
+    tick(20000);
     expect(error).toHaveBeenCalled();
   }));
 

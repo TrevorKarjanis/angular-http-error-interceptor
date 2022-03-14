@@ -2,8 +2,8 @@ import { HttpClient, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 
-import { HttpErrorCategory, HttpErrorInterceptor, PARSER } from './http-error-interceptor';
-import { TimeoutInterceptor } from './http-timeout-interceptor';
+import { HttpErrorCategory, HttpErrorInterceptor, PARSER } from './http-error.interceptor';
+import { HttpTimeoutInterceptor } from './http-timeout.interceptor';
 
 describe('HttpErrorInterceptor', () => {
   let controller: HttpTestingController;
@@ -25,7 +25,7 @@ describe('HttpErrorInterceptor', () => {
       }, {
         provide: HTTP_INTERCEPTORS,
         multi: true,
-        useClass: TimeoutInterceptor
+        useClass: HttpTimeoutInterceptor
       }]
     });
 
